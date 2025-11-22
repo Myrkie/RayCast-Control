@@ -1,126 +1,97 @@
 using ClientPlugin.Settings;
 using ClientPlugin.Settings.Elements;
-using Sandbox.Graphics.GUI;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Text;
 using ClientPlugin.Settings.Tools;
 using VRage.Input;
-using VRageMath;
 
 
 namespace ClientPlugin
 {
-    public enum ExampleEnum
-    {
-        FirstAlpha,
-        SecondBeta,
-        ThirdGamma,
-        AndTheDelta,
-        Epsilon
-    }
 
     public class Config : INotifyPropertyChanged
     {
         #region Options
 
-        // TODO: Define your configuration options and their default values
-        private bool toggle = true;
-        private int integer = 2;
-        private float number = 0.1f;
-        private string text = "Default Text";
-        private ExampleEnum dropdown = ExampleEnum.FirstAlpha;
-        private Color color = Color.Cyan;
-        private Color colorWithAlpha = new Color(0.8f, 0.6f, 0.2f, 0.5f);
-        private Binding keybind = new Binding(MyKeys.None);
+        public int DisappearTimeUrgentMs => oDisappearTimeUrgentMs;
+        private int oDisappearTimeUrgentMs = 4000;
+        public int DisappearTimeMinorMs => oDisappearTimeMinorMs;
+        private int oDisappearTimeMinorMs = 2000;
+        
+        private bool oRecursiveRemote = true;
+        
+        private Binding takeControl = new(MyKeys.B, false, true);
+        private Binding cyclePower = new(MyKeys.R, false, true);
+        private Binding shutdownPower = new(MyKeys.R, false, true, true);
+        private Binding accessTerminal = new(MyKeys.B, false, true, true);
 
         #endregion
 
         #region User interface
 
-        // TODO: Settings dialog title
-        public readonly string Title = "Config Demo";
+        public readonly string Title = "Raycast Control";
 
-        [Separator("Some settings")]
+        [Separator("HUD Message Display Time")]
         
-        // TODO: Settings dialog controls, one property for each configuration option
-
-        [Checkbox(description: "Checkbox Tooltip")]
-        public bool Toggle
+        [Slider(0.1f, 5.0f, 0.1f, description: "Time (s) urgent messages remain on screen (2.0 - 5.0)")]
+        public float DisappearTimeUrgent
         {
-            get => toggle;
-            set => SetField(ref toggle, value);
+            get => oDisappearTimeUrgentMs / 1000f;
+            set => SetField(ref oDisappearTimeUrgentMs, (int)(value * 1000));
         }
 
-        [Slider(-1f, 10f, 1f, SliderAttribute.SliderType.Integer, description: "Integer Slider Tooltip")]
-        public int Integer
+        [Slider(0.1f, 5.0f, 0.1f, description: "Time (s) minor messages remain on screen (2.0 - 5.0)")]
+        public float DisappearTimeMinor
         {
-            get => integer;
-            set => SetField(ref integer, value);
+            get => oDisappearTimeMinorMs / 1000f;
+            set => SetField(ref oDisappearTimeMinorMs, (int)(value * 1000));
         }
 
-        [Slider(-5f, 4.5f, 0.5f, SliderAttribute.SliderType.Float, description: "Float Slider Tooltip")]
-        public float Number
+        [Separator("General Settings")]
+
+        [Checkbox(description: "Enable recursive mode when searching for remotes on subgrids.")]
+        public bool RecursiveRemote
         {
-            get => number;
-            set => SetField(ref number, value);
+            get => oRecursiveRemote;
+            set => SetField(ref oRecursiveRemote, value);
         }
 
-        [Textbox(description: "Textbox Tooltip")]
-        public string Text
+        [Separator("Custom Hotkeys")]
+
+        [Keybind(description: "Take control of grid.")]
+        public Binding TakeControl
         {
-            get => text;
-            set => SetField(ref text, value);
+            get => takeControl;
+            set => SetField(ref takeControl, value);
         }
 
-        [Dropdown(description: "Dropdown Tooltip")]
-        public ExampleEnum Dropdown
+        [Keybind(description: "Cycle Grid power.")]
+        public Binding CyclePower
         {
-            get => dropdown;
-            set => SetField(ref dropdown, value);
+            get => cyclePower;
+            set => SetField(ref cyclePower, value);
         }
 
-        [Separator("More settings")]
-        
-        [Color(description: "RGB color")]
-        public Color Color
+        [Keybind(description: "Power down Grid.")]
+        public Binding ShutdownPower
         {
-            get => color;
-            set => SetField(ref color, value);
+            get => shutdownPower;
+            set => SetField(ref shutdownPower, value);
         }
 
-        [Color(hasAlpha: true, description: "RGBA color")]
-        public Color ColorWithAlpha
+        [Keybind(description: "Access nearest grid Terminal.")]
+        public Binding AccessTerminal
         {
-            get => colorWithAlpha;
-            set => SetField(ref colorWithAlpha, value);
-        }
-
-        [Keybind(description: "Keybind Tooltip - Unbind by right clicking the button")]
-        public Binding Keybind
-        {
-            get => keybind;
-            set => SetField(ref keybind, value);
-        }
-
-        [Button(description: "Button Tooltip")]
-        public void Button()
-        {
-            MyGuiSandbox.AddScreen(MyGuiSandbox.CreateMessageBox(
-                MyMessageBoxStyleEnum.Info,
-                buttonType: MyMessageBoxButtonsType.OK,
-                messageText: new StringBuilder("You clicked me!"),
-                messageCaption: new StringBuilder("Custom Button Function"),
-                size: new Vector2(0.6f, 0.5f)
-            ));
+            get => accessTerminal;
+            set => SetField(ref accessTerminal, value);
         }
 
         #endregion
 
         #region Property change notification boilerplate
 
-        public static readonly Config Default = new Config();
+        public static readonly Config Default = new();
         public static readonly Config Current = ConfigStorage.Load();
 
         public event PropertyChangedEventHandler PropertyChanged;
