@@ -1,0 +1,1 @@
+For instructions read `AGENTS.md` from the repository's root.
