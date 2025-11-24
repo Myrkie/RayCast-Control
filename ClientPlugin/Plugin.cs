@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using ClientPlugin.Settings;
 using ClientPlugin.Settings.Layouts;
 using HarmonyLib;
@@ -11,8 +12,18 @@ namespace ClientPlugin
     public class Plugin : IPlugin
     {
         public const string Name = "RayCastControl";
-        public static Plugin Instance { get; private set; }
+        private static Plugin Instance { get; set; }
         private SettingsGenerator settingsGenerator;
+        public static Action<string, NLog.LogLevel> PulsarLog;
+        
+        private static readonly string PluginName = ((AssemblyTitleAttribute)Attribute.GetCustomAttribute(
+            Assembly.GetExecutingAssembly(), typeof(AssemblyTitleAttribute))).Title;
+        
+        public static void WriteToPulsarLog(string logMsg, NLog.LogLevel logLevel)
+        {
+            PulsarLog?.Invoke($"[{PluginName}] {logMsg}", logLevel);
+        }
+        
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         public void Init(object gameInstance)

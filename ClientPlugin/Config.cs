@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using ClientPlugin.Settings.Tools;
 using VRage.Input;
+// ReSharper disable UnusedMember.Global
 
 
 namespace ClientPlugin
@@ -18,13 +19,6 @@ namespace ClientPlugin
         private int oDisappearTimeUrgentMs = 4000;
         public int DisappearTimeMinorMs => oDisappearTimeMinorMs;
         private int oDisappearTimeMinorMs = 2000;
-        
-        private bool oRecursiveRemote = true;
-        
-        private Binding takeControl = new(MyKeys.B, false, true);
-        private Binding cyclePower = new(MyKeys.R, false, true);
-        private Binding shutdownPower = new(MyKeys.R, false, true, true);
-        private Binding accessTerminal = new(MyKeys.B, false, true, true);
 
         #endregion
 
@@ -49,43 +43,49 @@ namespace ClientPlugin
         }
 
         [Separator("General Settings")]
-
         [Checkbox(description: "Enable recursive mode when searching for remotes on subgrids.")]
         public bool RecursiveRemote
         {
-            get => oRecursiveRemote;
-            set => SetField(ref oRecursiveRemote, value);
-        }
+            get;
+            set => SetField(ref field, value);
+        } = true;
+        
+        
+        [Checkbox(description: "Auto sets first connected remote control to main remote control if one is not found.")]
+        public bool SetMainRemote
+        {
+            get;
+            set => SetField(ref field, value);
+        } = true;
 
         [Separator("Custom Hotkeys")]
-
         [Keybind(description: "Take control of grid.")]
         public Binding TakeControl
         {
-            get => takeControl;
-            set => SetField(ref takeControl, value);
-        }
+            get;
+            set => SetField(ref field, value);
+        } = new(MyKeys.B, false, true);
 
         [Keybind(description: "Cycle Grid power.")]
         public Binding CyclePower
         {
-            get => cyclePower;
-            set => SetField(ref cyclePower, value);
-        }
+            get;
+            set => SetField(ref field, value);
+        } = new(MyKeys.R, false, true);
 
         [Keybind(description: "Power down Grid.")]
         public Binding ShutdownPower
         {
-            get => shutdownPower;
-            set => SetField(ref shutdownPower, value);
-        }
+            get;
+            set => SetField(ref field, value);
+        } = new(MyKeys.R, false, true, true);
 
         [Keybind(description: "Access nearest grid Terminal.")]
         public Binding AccessTerminal
         {
-            get => accessTerminal;
-            set => SetField(ref accessTerminal, value);
-        }
+            get;
+            set => SetField(ref field, value);
+        } = new(MyKeys.B, false, true, true);
 
         #endregion
 

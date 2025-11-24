@@ -40,7 +40,6 @@ namespace ClientPlugin
         private bool hotkeyPressedLastFrame;
         private void HandleHotkey()
         {
-
             var input = MyInput.Static;
             HandleHotkeyType? pressedHotkey = null;
 
@@ -86,15 +85,15 @@ namespace ClientPlugin
             }
             switch (controlledEntity)
             {
-                case MyCharacter _ when !IsPlayerAntennaBroadcastingPossible(player):
+                case MyCharacter when !IsPlayerAntennaBroadcastingPossible(player):
                     WriteToHudAndLog("Cannot control grid: Your suit energy is too low for broadcasting!", 
                         Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Debug);
                     return;
-                case MyCharacter _ when !IsPlayerBroadcasting(player):
+                case MyCharacter when !IsPlayerBroadcasting(player):
                     WriteToHudAndLog("Cannot control grid: Your antenna is not broadcasting!", 
                         Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Debug);
                     return;
-                case MyCharacter _ when !IsGridReachableByPlayer(grid, player as MyPlayer):
+                case MyCharacter when !IsGridReachableByPlayer(grid, player as MyPlayer):
                     WriteToHudAndLog($"Cannot control grid: {grid.DisplayName} is not reachable!", 
                         Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Debug);
                     return;
@@ -150,10 +149,33 @@ namespace ClientPlugin
         private static bool GetRemoteControl(IMyCubeGrid grid, IMyPlayer player, out MyRemoteControl remote)
         {
             remote = null;
-            
+            MyRemoteControl fallback = null;
+
             foreach (var rc in grid.GetFatBlocks<MyRemoteControl>())
             {
-                if (rc.IsFunctional) remote = rc;
+                if (!rc.IsFunctional)
+                    continue;
+
+                if (rc.IsMainRemoteControl)
+                {
+                    remote = rc;
+                    Plugin.WriteToPulsarLog($"Using main control remote: {rc.CustomName}", LogLevel.Debug);
+                    break;
+                }
+
+                fallback ??= rc;
+            }
+
+            if (remote == null && fallback != null)
+            {
+                remote = fallback;
+                Plugin.WriteToPulsarLog($"Using fallback remote: {fallback.CustomName}", LogLevel.Debug);
+
+                if (Config.Current.SetMainRemote)
+                { 
+                    Plugin.WriteToPulsarLog($"Promoting {remote.CustomName} to MainRemote", LogLevel.Debug);
+                    remote.IsMainRemoteControl = true;
+                }
             }
 
             if (Config.Current.RecursiveRemote && remote == null)
@@ -161,9 +183,11 @@ namespace ClientPlugin
                 HashSet<MyCubeGrid> visited = [];
                 MyRemoteControl foundRemote = null;
                 
+                Plugin.WriteToPulsarLog("No grid found, trying with recursive subgrid checks", LogLevel.Debug);
+                
                 void SearchGrid(MyCubeGrid currentGrid)
                 {
-                    RayCastControlPlugin.WriteToPulsarLog($"Searching grid {currentGrid.DisplayName} recursively", LogLevel.Info);
+                    Plugin.WriteToPulsarLog($"Searching grid {currentGrid.DisplayName} recursively", LogLevel.Info);
                     if (visited.Contains(currentGrid) || foundRemote != null) return;
 
                     visited.Add(currentGrid);
@@ -171,7 +195,7 @@ namespace ClientPlugin
                     foreach (var rc in currentGrid.GetFatBlocks<MyRemoteControl>())
                     {
                         if (!rc.IsFunctional) continue;
-                        RayCastControlPlugin.WriteToPulsarLog($"found {rc.DisplayName} remote control on grid {currentGrid.DisplayName}", LogLevel.Info);
+                        Plugin.WriteToPulsarLog($"found {rc.DisplayName} remote control on grid {currentGrid.DisplayName}", LogLevel.Info);
                         foundRemote = rc;
                         return;
                     }
@@ -208,7 +232,6 @@ namespace ClientPlugin
             if (remote.CanControl(MySession.Static.ControlledEntity)) return false;
             WriteToHudAndLog($"Cannot connect to remote grid {grid.DisplayName}", Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Error);
             return true;
-
         }
 
         private static void OpenGridTerminal(MyCubeGrid grid, IMyPlayer player)
@@ -233,7 +256,7 @@ namespace ClientPlugin
         
         private static void WriteToHudAndLog(string content, int disappearTime, MyFontEnum font, LogLevel logLevel)
         {
-            RayCastControlPlugin.WriteToPulsarLog(content, logLevel);
+            Plugin.WriteToPulsarLog(content, logLevel);
             MyAPIGateway.Utilities.ShowNotification(content, disappearTime,font);
         }
         
@@ -314,14 +337,14 @@ namespace ClientPlugin
                 accessible: true
             );
 
-            RayCastControlPlugin.WriteToPulsarLog($"Trying to reach {targetGrid.DisplayName} from {controlledEntity.DisplayName}", LogLevel.Info);
+            Plugin.WriteToPulsarLog($"Trying to reach {targetGrid.DisplayName} from {controlledEntity.DisplayName}", LogLevel.Info);
 
             foreach (var info in reachableInfo)
             {
-                RayCastControlPlugin.WriteToPulsarLog($"Reachable from {targetGrid.DisplayName} via: {info.Name} ({info.EntityId})", LogLevel.Debug);
+                Plugin.WriteToPulsarLog($"Reachable from {targetGrid.DisplayName} via: {info.Name} ({info.EntityId})", LogLevel.Debug);
             }
             
-            RayCastControlPlugin.WriteToPulsarLog(!reachable
+            Plugin.WriteToPulsarLog(!reachable
                 ? $"Connection from {player.DisplayName} to {targetGrid.DisplayName} not found in relayed path."
                 : $"Connection path {player.DisplayName} to {targetGrid.DisplayName} confirmed.", LogLevel.Info
             );
@@ -350,14 +373,14 @@ namespace ClientPlugin
                 accessible: true
             );
 
-            RayCastControlPlugin.WriteToPulsarLog($"Trying to reach {targetGrid.DisplayName} from {sourceGrid.DisplayName}", LogLevel.Info);
+            Plugin.WriteToPulsarLog($"Trying to reach {targetGrid.DisplayName} from {sourceGrid.DisplayName}", LogLevel.Info);
 
             foreach (var info in reachableInfo)
             {
-                RayCastControlPlugin.WriteToPulsarLog($"Reachable from {targetGrid.DisplayName} via: {info.Name} ({info.EntityId})", LogLevel.Debug);
+                Plugin.WriteToPulsarLog($"Reachable from {targetGrid.DisplayName} via: {info.Name} ({info.EntityId})", LogLevel.Debug);
             }
 
-            RayCastControlPlugin.WriteToPulsarLog(!reachable
+            Plugin.WriteToPulsarLog(!reachable
                     ? $"Connection from {sourceGrid.DisplayName} to {targetGrid.DisplayName} not found in relayed path."
                     : $"Connection path {sourceGrid.DisplayName} to {targetGrid.DisplayName} confirmed.", LogLevel.Info
             );
