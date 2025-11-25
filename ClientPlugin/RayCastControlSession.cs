@@ -20,8 +20,14 @@ namespace ClientPlugin
     // ReSharper disable once UnusedType.Global
     public class RayCastControlSession : MySessionComponentBase
     {
+        private static bool IsServer()
+        {
+            return MyAPIGateway.Utilities.IsDedicated;
+        }
+        
         public override void UpdateBeforeSimulation()
         {
+            if (IsServer()) return;
             if (MyAPIGateway.Session?.Player?.Controller?.ControlledEntity == null)
                 return;
 
