@@ -31,10 +31,10 @@ namespace ClientPlugin
         // input
         private enum HandleHotkeyType
         {
-            AltB,
-            AltR,
-            AltShiftR,
-            AltShiftB
+            TakeControl,
+            CyclePower,
+            ShutdownPower,
+            AccessTerminal
         }
 
         private bool hotkeyPressedLastFrame;
@@ -45,22 +45,21 @@ namespace ClientPlugin
 
             if (Config.Current.TakeControl.IsPressed(input))
             {
-                pressedHotkey = HandleHotkeyType.AltB;
+                pressedHotkey = HandleHotkeyType.TakeControl;
             }
             else if (Config.Current.CyclePower.IsPressed(input))
             {
-                pressedHotkey = HandleHotkeyType.AltR;
+                pressedHotkey = HandleHotkeyType.CyclePower;
             }
             else if (Config.Current.ShutdownPower.IsPressed(input))
             {
-                pressedHotkey = HandleHotkeyType.AltShiftR;
+                pressedHotkey = HandleHotkeyType.ShutdownPower;
             }
             else if (Config.Current.AccessTerminal.IsPressed(input))
             {
-                pressedHotkey = HandleHotkeyType.AltShiftB;
+                pressedHotkey = HandleHotkeyType.AccessTerminal;
             }
-
-
+            
             if (pressedHotkey.HasValue && !hotkeyPressedLastFrame)
             {
                 ToggleRemoteControl(pressedHotkey.Value);
@@ -87,19 +86,19 @@ namespace ClientPlugin
             {
                 case MyCharacter when !IsPlayerAntennaBroadcastingPossible(player):
                     WriteToHudAndLog("Cannot control grid: Your suit energy is too low for broadcasting!", 
-                        Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Debug);
+                        Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Info);
                     return;
                 case MyCharacter when !IsPlayerBroadcasting(player):
                     WriteToHudAndLog("Cannot control grid: Your antenna is not broadcasting!", 
-                        Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Debug);
+                        Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Info);
                     return;
                 case MyCharacter when !IsGridReachableByPlayer(grid, player as MyPlayer):
                     WriteToHudAndLog($"Cannot control grid: {grid.DisplayName} is not reachable!", 
-                        Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Debug);
+                        Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Info);
                     return;
                 case MyCockpit sourceCockpit when !IsGridReachableByGrid(sourceCockpit.CubeGrid, grid, player as MyPlayer):
                     WriteToHudAndLog($"Cannot control grid: {grid.DisplayName} is not reachable from {sourceCockpit.CubeGrid.DisplayName}!", 
-                        Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Debug);
+                        Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Info);
                     return;
             }
             
@@ -115,23 +114,23 @@ namespace ClientPlugin
 
             switch (hotKey)
             {
-                case HandleHotkeyType.AltB:
+                case HandleHotkeyType.TakeControl:
                     if (GetRemoteControl(grid, player, out var remote)) return;
                     remote.RequestControl();
                     WriteToHudAndLog($"Remote Controlling grid {remote.CubeGrid.DisplayName}", Config.Current.DisappearTimeMinorMs, MyFontEnum.Green, LogLevel.Info);
                     break;
-                case HandleHotkeyType.AltR:
+                case HandleHotkeyType.CyclePower:
                     if (GetRemoteControl(grid, player, out remote)) return;
                     remote.SwitchReactorsLocal();
                     remote.SwitchReactorsLocal();
                     WriteToHudAndLog($"Cycled Reactors on grid {remote.CubeGrid.DisplayName}", Config.Current.DisappearTimeMinorMs, MyFontEnum.Green, LogLevel.Info);
                     break;
-                case HandleHotkeyType.AltShiftR:
+                case HandleHotkeyType.ShutdownPower:
                     if (GetRemoteControl(grid, player, out remote)) return;
                     remote.SwitchReactorsLocal();
                     WriteToHudAndLog($"Disabled reactors on grid {remote.CubeGrid.DisplayName}", Config.Current.DisappearTimeMinorMs, MyFontEnum.Green, LogLevel.Info);
                     break;
-                case HandleHotkeyType.AltShiftB:
+                case HandleHotkeyType.AccessTerminal:
                     OpenGridTerminal(grid as MyCubeGrid, player as MyPlayer);
                     WriteToHudAndLog($"Opening terminal on grid {grid.DisplayName}", Config.Current.DisappearTimeMinorMs, MyFontEnum.Green, LogLevel.Info);
                     break;
@@ -187,7 +186,7 @@ namespace ClientPlugin
                 
                 void SearchGrid(MyCubeGrid currentGrid)
                 {
-                    Plugin.WriteToPulsarLog($"Searching grid {currentGrid.DisplayName} recursively", LogLevel.Info);
+                    Plugin.WriteToPulsarLog($"Searching grid {currentGrid.DisplayName} recursively", LogLevel.Debug);
                     if (visited.Contains(currentGrid) || foundRemote != null) return;
 
                     visited.Add(currentGrid);
