@@ -43,12 +43,20 @@ namespace ClientPlugin
         }
 
         [Separator("General Settings")]
-        [Checkbox(description: "Enable recursive mode when searching for remotes on subgrids.")]
+        [Checkbox(description: "Enable recursive mode when searching for remotes on subgroups.")]
+        [Settings.Elements.Description(description: "this will result in checking grids on connectors and magnetically connected.")]
         public bool RecursiveRemote
         {
             get;
             set => SetField(ref field, value);
         } = true;
+        
+        [Slider(100f, 5000f, 50f, description: "Max range of the grid scan raycast.")]
+        public float MaxRayCastRange
+        {
+            get; 
+            set => SetField(ref field, value);
+        } = 4500f;
         
         
         [Checkbox(description: "Auto sets first connected remote control to main remote control if one is not found.")]
@@ -56,7 +64,16 @@ namespace ClientPlugin
         {
             get;
             set => SetField(ref field, value);
-        } = true;
+        } = false;
+        
+        [Checkbox(description: "Automatically trys to set grid remote control ownership to the current player.")]
+        [Settings.Elements.Description(description: "Doesn't work outside of singleplayer because of, to my knowledge plugin limitations.")]
+        
+        public bool AttemptToOverTakeGrid
+        {
+            get;
+            set => SetField(ref field, value);
+        }
 
         [Separator("Custom Hotkeys")]
         [Keybind(description: "Take control of grid.")]

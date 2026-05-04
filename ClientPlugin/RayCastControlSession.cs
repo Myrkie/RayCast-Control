@@ -5,6 +5,7 @@ using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Character;
 using Sandbox.Game.GameSystems;
 using Sandbox.Game.Gui;
+using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
 using Sandbox.ModAPI;
 using VRage.Game;
@@ -76,16 +77,28 @@ namespace ClientPlugin
 
         // main logic
         
-        private void ToggleRemoteControl(HandleHotkeyType hotKey)
+        private static void ToggleRemoteControl(HandleHotkeyType hotKey)
         {
             var player = MyAPIGateway.Session.Player;
             if (player == null) return;
             
             var controlledEntity = player.Controller?.ControlledEntity?.Entity;
-            var grid = GetGridLookingAt(1000, out var getGridLookingAtReason);
+            
+            var grid = GetGridLookingAt(out var getGridLookingAtReason);
             if (grid == null)
             {
                 WriteToHudAndLog(getGridLookingAtReason, Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Debug);
+                return;
+            }
+
+            if (hotKey == HandleHotkeyType.AccessTerminal)
+            {
+                bool isRemote = IsGridReachableByPlayer(grid, player as MyPlayer);
+                OpenGridTerminal(grid as MyCubeGrid, player as MyPlayer, isRemote);
+                WriteToHudAndLog(
+                    $"Opening terminal on grid {grid.DisplayName} {(isRemote ? "(Remote)" : "(Local)")} ", 
+                    Config.Current.DisappearTimeMinorMs, MyFontEnum.Green, LogLevel.Info
+                );
                 return;
             }
             switch (controlledEntity)
@@ -121,24 +134,26 @@ namespace ClientPlugin
             switch (hotKey)
             {
                 case HandleHotkeyType.TakeControl:
-                    if (GetRemoteControl(grid, player, out var remote)) return;
+                    if (GetRemoteControl(grid, player, out var remote, hotKey)) return;
+                    if (Config.Current.AttemptToOverTakeGrid && Sync.IsServer)
+                    {
+                        WriteToHudAndLog($"overtaking grid remote {remote.DisplayName}", Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Info);
+                        remote.ChangeOwner(player.IdentityId, MyOwnershipShareModeEnum.Faction);
+                        
+                    }
                     remote.RequestControl();
                     WriteToHudAndLog($"Remote Controlling grid {remote.CubeGrid.DisplayName}", Config.Current.DisappearTimeMinorMs, MyFontEnum.Green, LogLevel.Info);
                     break;
                 case HandleHotkeyType.CyclePower:
-                    if (GetRemoteControl(grid, player, out remote)) return;
-                    remote.SwitchReactorsLocal();
-                    remote.SwitchReactorsLocal();
+                    if (GetRemoteControl(grid, player, out remote, hotKey)) return;
+                    remote.SwitchReactors();
+                    remote.SwitchReactors();
                     WriteToHudAndLog($"Cycled Reactors on grid {remote.CubeGrid.DisplayName}", Config.Current.DisappearTimeMinorMs, MyFontEnum.Green, LogLevel.Info);
                     break;
                 case HandleHotkeyType.ShutdownPower:
-                    if (GetRemoteControl(grid, player, out remote)) return;
-                    remote.SwitchReactorsLocal();
+                    if (GetRemoteControl(grid, player, out remote, hotKey)) return;
+                    remote.SwitchReactors();
                     WriteToHudAndLog($"Disabled reactors on grid {remote.CubeGrid.DisplayName}", Config.Current.DisappearTimeMinorMs, MyFontEnum.Green, LogLevel.Info);
-                    break;
-                case HandleHotkeyType.AccessTerminal:
-                    OpenGridTerminal(grid as MyCubeGrid, player as MyPlayer);
-                    WriteToHudAndLog($"Opening terminal on grid {grid.DisplayName}", Config.Current.DisappearTimeMinorMs, MyFontEnum.Green, LogLevel.Info);
                     break;
             }
         }
@@ -151,7 +166,7 @@ namespace ClientPlugin
             }
         }
 
-        private static bool GetRemoteControl(IMyCubeGrid grid, IMyPlayer player, out MyRemoteControl remote)
+        private static bool GetRemoteControl(IMyCubeGrid grid, IMyPlayer player, out MyRemoteControl remote, HandleHotkeyType hotKey)
         {
             remote = null;
             MyRemoteControl fallback = null;
@@ -228,9 +243,22 @@ namespace ClientPlugin
             
             if (MySession.Static.ControlledEntity is MyRemoteControl currentRemote)
             {
-                WriteToHudAndLog(
-                    $"You are already controlling grid {currentRemote.CubeGrid.DisplayName} via remote {currentRemote.CustomName} connection not possible.",
-                    Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Error);
+                switch (hotKey)
+                {
+                    case HandleHotkeyType.TakeControl:
+                        WriteToHudAndLog(
+                            $"You are already controlling Remote grid {currentRemote.CubeGrid.DisplayName}",
+                            Config.Current.DisappearTimeUrgentMs, MyFontEnum.Red, LogLevel.Error);
+                        return false;
+                    case HandleHotkeyType.CyclePower:
+                        currentRemote.SwitchReactors();
+                        currentRemote.SwitchReactors();
+                        WriteToHudAndLog($"Cycled Reactors on Remote grid {currentRemote.CubeGrid.DisplayName}", 
+                            Config.Current.DisappearTimeMinorMs, MyFontEnum.Green, LogLevel.Info);
+                        break;
+                }
+
+                remote = currentRemote;
                 return true;
             }
 
@@ -239,7 +267,7 @@ namespace ClientPlugin
             return true;
         }
 
-        private static void OpenGridTerminal(MyCubeGrid grid, IMyPlayer player)
+        private static void OpenGridTerminal(MyCubeGrid grid, IMyPlayer player, bool isRemote)
         {
             var character = GetControlledCharacter(player);
             if (character == null || grid == null)
@@ -253,7 +281,7 @@ namespace ClientPlugin
                     MyTerminalPageEnum.ControlPanel,
                     character,
                     cubeBlock,
-                    true
+                    isRemote
                 );
                 break;
             }
@@ -271,13 +299,13 @@ namespace ClientPlugin
             return MySession.Static?.Players?.TryGetIdentityNameFromSteamId(steamId);
         }
 
-        private static IMyCubeGrid GetGridLookingAt(double maxDistance, out string reason)
+        private static IMyCubeGrid GetGridLookingAt(out string reason)
         {
             reason = null;
             var camera = MyAPIGateway.Session.Camera;
             var start = camera.WorldMatrix.Translation;
             var dir = camera.WorldMatrix.Forward;
-            var end = start + dir * maxDistance;
+            var end = start + dir * Config.Current.MaxRayCastRange;
 
             bool hit = MyAPIGateway.Physics.CastRay(start, end, out var hitInfo, MyPhysics.CollisionLayers.DefaultCollisionLayer, true);
             if (!hit || hitInfo?.HitEntity == null)
@@ -392,12 +420,32 @@ namespace ClientPlugin
 
             return reachable;
         }
-
         
         private static bool IsGridPowered(IMyCubeGrid grid)
         {
             var myCubeGrid = grid as MyCubeGrid;
-            return myCubeGrid is { IsPowered: true };
+
+            return myCubeGrid is { IsPowerSwitchOn: true } || HasActivePowerSource(myCubeGrid);
+        }
+        
+        private static bool HasActivePowerSource(MyCubeGrid grid)
+        {
+            if (grid == null)
+                return false;
+
+            var blocks = grid.GetBlocks();
+
+            foreach (var slim in blocks)
+            {
+                var fat = slim.FatBlock;
+                if (fat == null)
+                    continue;
+
+                if (fat is not IMyPowerProducer engine) continue;
+                if (engine.IsFunctional && engine.Enabled)
+                    return true;
+            }
+            return false;
         }
     }
 }

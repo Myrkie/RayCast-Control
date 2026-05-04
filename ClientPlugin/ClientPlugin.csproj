@@ -310,6 +310,7 @@
         <Compile Include="Settings\Elements\Checkbox.cs" />
         <Compile Include="Settings\Elements\Color.cs" />
         <Compile Include="Settings\Elements\Control.cs" />
+        <Compile Include="Settings\Elements\Description.cs" />
         <Compile Include="Settings\Elements\Dropdown.cs" />
         <Compile Include="Settings\Elements\Element.cs" />
         <Compile Include="Settings\Elements\Keybind.cs" />
